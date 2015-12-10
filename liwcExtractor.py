@@ -3,7 +3,7 @@
 import nltk
 import re
 import pickle
-liwcPath = './LIWC2007_English_plus_txt.dic'
+liwcPath = '../data/LIWC2007_English_plus_txt.dic'
 
 def makeLIWCDictionary(liwcPath, picklePath):
     '''
@@ -35,7 +35,7 @@ def makeLIWCDictionary(liwcPath, picklePath):
             catNames[cat]['words'] += (data[0], reString)
     	cats = data[1:]
     	line = LIWC_file.readline()
-    toPickle = {'categories' : catNames, 'lookup' : lookup}
+    toPickle = {'categories' : catNames, 'lookup' : lookup, 'cat_to_num' : mapCategoriesToNumbers}
     pickle.dump(toPickle, open(picklePath, 'w'))
     return toPickle
 
@@ -45,22 +45,27 @@ class liwcExtractor():
                 ignore=None,
                 dictionary=None,
                 newCategories=None,
-                keepNonDict=True
-                liwcPath=None): #
+                keepNonDict=True,
+                liwcPath=None):
+        self.liwcPath = liwcPath
+        self.dictionary = dictionary
         if tokenizer is None:
             self.tokenizer = self.nltk_tokenize
         if liwcPath is not None:
-            dictionary = makeLIWCDictionary(self.liwcPath, './liwcDictionary.pickle')
-            self.lookup = dictionary['lookup']
-            self.categories = dictionary['categories']
-        elif dictionary=None:
-            dictionary = makeLIWCDictionary(liwcPath, './liwcDictionary.pickle')
-            self.lookup = dictionary['lookup']
-            self.categories = dictionary['categories']
+            self.dictionary = makeLIWCDictionary(liwcPath, './liwcDictionary.pickle')
+            self.lookup = self.dictionary['lookup']
+            self.categories = self.dictionary['categories']
+            self.mapCategoriesToNumbers = self.dictionary['cat_to_num']
+        elif self.dictionary==None:
+            self.dictionary = makeLIWCDictionary(liwcPath, './liwcDictionary.pickle')
+            self.lookup = self.dictionary['lookup']
+            self.categories = self.dictionary['categories']
+            self.mapCategoriesToNumbers = self.dictionary['cat_to_num']
         self.ignore = ignore
         self.newCategories = newCategories
         self.nonDictTokens = []
         self.keepNonDict = keepNonDict
+
     def getCategoryIndeces(self):
         indeces = [x['name'] for x in self.categories.values()]
         indeces += ['wc', 'sixltr','dic','punc','emoticon'] # These last two are not built yet.
@@ -99,6 +104,16 @@ class liwcExtractor():
                 self.nonDictTokens.append(t)
         return features
 
+    def patternsMatchedFromDoc(self, document):
+        tokens = self.tokenizer(document)
+        patterns = [l[0] for l in self.lookup]
+        features = [0] * len(patterns)
+        for t in tokens:
+            for i, pattern in enumerate(patterns):
+                if len(pattern.findall(t)) > 0:
+                    features[i] += 1
+        return features
+
     def nltk_tokenize(self, message):
     	'''
     		takes in a text string and returns a list of tokenized words using nltk methods
@@ -110,6 +125,7 @@ class liwcExtractor():
     	for sent in stList:
     		tokens += nltk.word_tokenize(sent)
     	return tokens
+
 
     #def android_data_tokenize(message):
         '''

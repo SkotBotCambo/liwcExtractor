@@ -9,7 +9,7 @@ def makeLIWCDictionary(liwcPath, picklePath):
     '''
         Make lookup data structure from LIWC dictionary file
     '''
-    LIWC_file = open(liwcPath, 'rU') # LIWC dictionary
+    LIWC_file = open(liwcPath, 'rb') # LIWC dictionary
     catNames = {}
     LIWC_file.readline() #skips first '%' line
     line = LIWC_file.readline()
